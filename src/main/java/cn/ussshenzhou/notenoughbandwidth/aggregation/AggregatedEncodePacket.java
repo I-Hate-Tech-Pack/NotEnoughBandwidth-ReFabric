@@ -26,6 +26,7 @@ public class AggregatedEncodePacket {
     private static final Logger LOGGER = LoggerFactory.getLogger("NEB-Encode");
 
     public final Identifier type;
+    public final long createdNano = System.nanoTime();
     private final boolean isCustomPayload;
     private final Packet<?> packet;
     private final CustomPayload payload;

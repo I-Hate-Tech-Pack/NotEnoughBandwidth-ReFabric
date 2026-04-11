@@ -1,5 +1,7 @@
 package cn.ussshenzhou.notenoughbandwidth.stat;
 
+import cn.ussshenzhou.notenoughbandwidth.util.LatencyCounter;
+
 import java.util.concurrent.atomic.AtomicLong;
 
 public class SimpleStatManager {
@@ -50,4 +52,18 @@ public class SimpleStatManager {
     // Server-side NIC traffic speeds received via StatRespondPayload.
     public static volatile long nicInboundSpeedServer;
     public static volatile long nicOutboundSpeedServer;
+
+    // Latency tracking (local side)
+    public static final LatencyCounter bufferingLatency = new LatencyCounter();
+    public static final LatencyCounter compressionTime = new LatencyCounter();
+    public static final LatencyCounter decompressionTime = new LatencyCounter();
+    public static final LatencyCounter encodeOverhead = new LatencyCounter();
+    public static final LatencyCounter decodeOverhead = new LatencyCounter();
+
+    // Server-side latency (received via StatRespondPayload)
+    public static volatile double bufferingLatencyMsServer;
+    public static volatile double compressionTimeMsServer;
+    public static volatile double decompressionTimeMsServer;
+    public static volatile double encodeOverheadMsServer;
+    public static volatile double decodeOverheadMsServer;
 }

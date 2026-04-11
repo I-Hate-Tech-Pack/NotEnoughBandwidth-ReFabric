@@ -1,6 +1,7 @@
 package cn.ussshenzhou.notenoughbandwidth.aggregation;
 
 import cn.ussshenzhou.notenoughbandwidth.network.NebConnectionRegistry;
+import cn.ussshenzhou.notenoughbandwidth.stat.SimpleStatManager;
 import cn.ussshenzhou.notenoughbandwidth.util.DefaultChannelPipelineHelper;
 import cn.ussshenzhou.notenoughbandwidth.util.PacketUtil;
 import com.google.common.util.concurrent.ThreadFactoryBuilder;
@@ -130,6 +131,12 @@ public class AggregationManager {
             }
             var sendPackets = new ArrayList<>(packets);
             packets.clear();
+            long flushNano = System.nanoTime();
+            long totalLatency = 0;
+            for (var p : sendPackets) {
+                totalLatency += (flushNano - p.createdNano);
+            }
+            SimpleStatManager.bufferingLatency.record(totalLatency / sendPackets.size());
             var aggregationPayload = new PacketAggregationPacket(
                     sendPackets, encoder.state, connection);
             // encoder.state.side() = outbound direction (CLIENTBOUND on server, SERVERBOUND on client)

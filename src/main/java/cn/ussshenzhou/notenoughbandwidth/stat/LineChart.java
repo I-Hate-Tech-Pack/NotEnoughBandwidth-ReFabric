@@ -3,6 +3,8 @@ package cn.ussshenzhou.notenoughbandwidth.stat;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 
+import java.util.function.LongFunction;
+
 /**
  * Renders a multi-line time-series chart using DrawContext primitives.
  */
@@ -16,12 +18,22 @@ public final class LineChart {
     private LineChart() {}
 
     /**
-     * @param series array of TimeSeries to plot
-     * @param colors ARGB color for each series
-     * @param labels display name for each series
+     * Render with default Y-axis formatter (bytes/sec).
      */
     public static void render(DrawContext ctx, TextRenderer tr, int x, int y, int w, int h,
                               TimeSeries[] series, int[] colors, String[] labels) {
+        render(ctx, tr, x, y, w, h, series, colors, labels, LineChart::formatRate);
+    }
+
+    /**
+     * @param series      array of TimeSeries to plot
+     * @param colors      ARGB color for each series
+     * @param labels      display name for each series
+     * @param yFormatter  converts a raw long value to a Y-axis label string
+     */
+    public static void render(DrawContext ctx, TextRenderer tr, int x, int y, int w, int h,
+                              TimeSeries[] series, int[] colors, String[] labels,
+                              LongFunction<String> yFormatter) {
         // Background
         ctx.fill(x, y, x + w, y + h, BG_COLOR);
 
@@ -52,7 +64,7 @@ public final class LineChart {
             int gy = y + h - (h * i / GRID_LINES);
             drawHorizontalLine(ctx, x + 1, x + w, gy, GRID_COLOR);
             long value = globalMax * i / GRID_LINES;
-            String label = formatRate(value);
+            String label = yFormatter.apply(value);
             ctx.drawText(tr, label, x + 2, gy - 9, 0xFFCCCCCC, false);
         }
 
@@ -133,13 +145,21 @@ public final class LineChart {
         ctx.fill(x1, y, x2, y + 1, color);
     }
 
-    private static String formatRate(long bytesPerSec) {
+    static String formatRate(long bytesPerSec) {
         if (bytesPerSec < 1000) {
             return bytesPerSec + " B/s";
         } else if (bytesPerSec < 1_000_000) {
             return String.format("%.1f KiB/s", bytesPerSec / 1024.0);
         } else {
             return String.format("%.1f MiB/s", bytesPerSec / (1024.0 * 1024.0));
+        }
+    }
+
+    static String formatMicros(long micros) {
+        if (micros < 1000) {
+            return micros + " us";
+        } else {
+            return String.format("%.1f ms", micros / 1000.0);
         }
     }
 }

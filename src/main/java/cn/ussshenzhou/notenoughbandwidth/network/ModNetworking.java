@@ -101,7 +101,12 @@ public class ModNetworking {
                         SimpleStatManager.chunkCacheMisses.get(),
                         SimpleStatManager.chunkCacheSavedBytes.get(),
                         SystemTrafficMonitor.getInboundBytesPerSec(),
-                        SystemTrafficMonitor.getOutboundBytesPerSec()
+                        SystemTrafficMonitor.getOutboundBytesPerSec(),
+                        SimpleStatManager.bufferingLatency.averageMs(),
+                        SimpleStatManager.compressionTime.averageMs(),
+                        SimpleStatManager.decompressionTime.averageMs(),
+                        SimpleStatManager.encodeOverhead.averageMs(),
+                        SimpleStatManager.decodeOverhead.averageMs()
                 ));
             }
         });
@@ -190,6 +195,11 @@ public class ModNetworking {
             SimpleStatManager.chunkCacheSavedBytesServer = payload.chunkCacheSavedBytes();
             SimpleStatManager.nicInboundSpeedServer = payload.nicInboundSpeed();
             SimpleStatManager.nicOutboundSpeedServer = payload.nicOutboundSpeed();
+            SimpleStatManager.bufferingLatencyMsServer = payload.bufferingLatencyMs();
+            SimpleStatManager.compressionTimeMsServer = payload.compressionTimeMs();
+            SimpleStatManager.decompressionTimeMsServer = payload.decompressionTimeMs();
+            SimpleStatManager.encodeOverheadMsServer = payload.encodeOverheadMs();
+            SimpleStatManager.decodeOverheadMsServer = payload.decodeOverheadMs();
         });
     }
 }

@@ -53,6 +53,7 @@ public class PacketAggregationPacket implements CustomPayload {
     }
 
     public void write(RegistryByteBuf buffer) {
+        long startTotal = System.nanoTime();
         var rawBuf = new RegistryByteBuf(ByteBufAllocator.DEFAULT.buffer(), buffer.getRegistryManager());
         try {
             packetsToEncode.forEach(p -> encodeSubPacket(rawBuf, p));
@@ -67,7 +68,9 @@ public class PacketAggregationPacket implements CustomPayload {
             buffer.writeBoolean(compress);
             if (compress) {
                 buffer.writeVarInt(rawSize);
+                long compStart = System.nanoTime();
                 var compressedBuf = new PacketByteBuf(ZstdHelper.compress(connection, rawBuf));
+                SimpleStatManager.compressionTime.record(System.nanoTime() - compStart);
                 try {
                     if (ConfigHelper.getConfigRead(NotEnoughBandwidthConfig.class).debugLog) {
                         LOGGER.debug("Aggregated and compressed: {} -> {} bytes ({} %)",
@@ -87,6 +90,7 @@ public class PacketAggregationPacket implements CustomPayload {
         } finally {
             rawBuf.release();
         }
+        SimpleStatManager.encodeOverhead.record(System.nanoTime() - startTotal);
     }
 
     private void encodeSubPacket(RegistryByteBuf raw, AggregatedEncodePacket packet) {
@@ -114,13 +118,16 @@ public class PacketAggregationPacket implements CustomPayload {
     // ---- handle side ----
     @SuppressWarnings({"rawtypes", "unchecked"})
     public void handle(ClientConnection conn) {
+        long startTotal = System.nanoTime();
         this.connection = conn;
 
         boolean compressed = data.readBoolean();
         RegistryByteBuf raw;
         if (compressed) {
             int size = data.readVarInt();
+            long decompStart = System.nanoTime();
             raw = new RegistryByteBuf(ZstdHelper.decompress(conn, data.retainedDuplicate(), size), data.getRegistryManager());
+            SimpleStatManager.decompressionTime.record(System.nanoTime() - decompStart);
         } else {
             raw = new RegistryByteBuf(data.retain(), data.getRegistryManager());
         }
@@ -168,6 +175,7 @@ public class PacketAggregationPacket implements CustomPayload {
                 sub.getData().release();
             }
         }
+        SimpleStatManager.decodeOverhead.record(System.nanoTime() - startTotal);
     }
 
     public int getBakedSize() {

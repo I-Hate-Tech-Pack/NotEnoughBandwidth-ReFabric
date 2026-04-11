@@ -23,7 +23,12 @@ public record StatRespondPayload(
         long chunkCacheMisses,
         long chunkCacheSavedBytes,
         long nicInboundSpeed,
-        long nicOutboundSpeed
+        long nicOutboundSpeed,
+        double bufferingLatencyMs,
+        double compressionTimeMs,
+        double decompressionTimeMs,
+        double encodeOverheadMs,
+        double decodeOverheadMs
 ) implements CustomPayload {
     public static final Id<StatRespondPayload> TYPE =
             new Id<>(Identifier.of(ModConstants.NETWORK_NAMESPACE, "stat_resp"));
@@ -47,7 +52,12 @@ public record StatRespondPayload(
                     PacketCodecs.VAR_LONG.decode(buf),
                     PacketCodecs.VAR_LONG.decode(buf),
                     PacketCodecs.VAR_LONG.decode(buf),
-                    PacketCodecs.VAR_LONG.decode(buf)
+                    PacketCodecs.VAR_LONG.decode(buf),
+                    PacketCodecs.DOUBLE.decode(buf),
+                    PacketCodecs.DOUBLE.decode(buf),
+                    PacketCodecs.DOUBLE.decode(buf),
+                    PacketCodecs.DOUBLE.decode(buf),
+                    PacketCodecs.DOUBLE.decode(buf)
             );
         }
 
@@ -69,6 +79,11 @@ public record StatRespondPayload(
             PacketCodecs.VAR_LONG.encode(buf, value.chunkCacheSavedBytes);
             PacketCodecs.VAR_LONG.encode(buf, value.nicInboundSpeed);
             PacketCodecs.VAR_LONG.encode(buf, value.nicOutboundSpeed);
+            PacketCodecs.DOUBLE.encode(buf, value.bufferingLatencyMs);
+            PacketCodecs.DOUBLE.encode(buf, value.compressionTimeMs);
+            PacketCodecs.DOUBLE.encode(buf, value.decompressionTimeMs);
+            PacketCodecs.DOUBLE.encode(buf, value.encodeOverheadMs);
+            PacketCodecs.DOUBLE.encode(buf, value.decodeOverheadMs);
         }
     };
 

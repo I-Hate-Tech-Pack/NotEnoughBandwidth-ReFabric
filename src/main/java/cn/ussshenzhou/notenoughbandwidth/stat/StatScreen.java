@@ -7,7 +7,6 @@ import net.minecraft.client.gui.screen.Screen;
 import net.minecraft.text.Text;
 
 import static cn.ussshenzhou.notenoughbandwidth.stat.SimpleStatManager.*;
-import static cn.ussshenzhou.notenoughbandwidth.stat.SimpleStatManager.chunkCacheSavedBytesServer;
 
 public class StatScreen extends Screen {
     private final String client = "Client";
@@ -26,6 +25,8 @@ public class StatScreen extends Screen {
     private String chunkCacheStatus = "";
     private String clientNicStatus = "";
     private String serverNicStatus = "";
+    private String latencyClientStatus = "";
+    private String latencyServerStatus = "";
 
     private static final TimeSeries[] CLIENT_CHART_SERIES = {
             ChartSampler.clientNic, ChartSampler.clientBaked, ChartSampler.clientRaw
@@ -37,7 +38,17 @@ public class StatScreen extends Screen {
     private static final String[] CLIENT_CHART_LABELS = {"Client NIC", "Client Actual", "Client Raw"};
     private static final String[] SERVER_CHART_LABELS = {"Server NIC", "Server Actual", "Server Raw"};
 
-    private static final int CONTENT_HEIGHT = 512;
+    private static final TimeSeries[] CLIENT_LATENCY_SERIES = {
+            ChartSampler.clientBufferingLatency, ChartSampler.clientCompressTime, ChartSampler.clientDecompressTime
+    };
+    private static final TimeSeries[] SERVER_LATENCY_SERIES = {
+            ChartSampler.serverBufferingLatency, ChartSampler.serverCompressTime, ChartSampler.serverDecompressTime
+    };
+    private static final int[] LATENCY_COLORS = {0xFFFF4444, 0xFF44CCFF, 0xFFFFCC44};
+    private static final String[] CLIENT_LATENCY_LABELS = {"Buffering", "Compress", "Decompress"};
+    private static final String[] SERVER_LATENCY_LABELS = {"Buffering", "Compress", "Decompress"};
+
+    private static final int CONTENT_HEIGHT = 750;
     private static final int SCROLL_SPEED = 10;
 
     private int tick = 0;
@@ -143,6 +154,18 @@ public class StatScreen extends Screen {
                 serverNicStatus = "Server NIC  §7-§r";
             }
 
+            latencyClientStatus = "Buffering " + formatLatency(bufferingLatency.averageMs())
+                    + "  Compress " + formatLatency(compressionTime.averageMs())
+                    + "  Decompress " + formatLatency(decompressionTime.averageMs())
+                    + "  Encode " + formatLatency(encodeOverhead.averageMs())
+                    + "  Decode " + formatLatency(decodeOverhead.averageMs());
+
+            latencyServerStatus = "Buffering " + formatLatency(bufferingLatencyMsServer)
+                    + "  Compress " + formatLatency(compressionTimeMsServer)
+                    + "  Decompress " + formatLatency(decompressionTimeMsServer)
+                    + "  Encode " + formatLatency(encodeOverheadMsServer)
+                    + "  Decode " + formatLatency(decodeOverheadMsServer);
+
             ChartSampler.sample();
         }
         tick++;
@@ -184,20 +207,38 @@ public class StatScreen extends Screen {
         context.drawText(tr, clientNicStatus, 10, 270, 0xFFFFFF, true);
         context.drawText(tr, serverNicStatus, 10, 290, 0xFFFFFF, true);
 
-        // Charts — side by side, with extra spacing below text
-        int chartY = 342;
+        // Latency text
+        context.drawText(tr, "NEB Latency (Client)", 10, 320, 0xFFFF8888, true);
+        context.drawText(tr, latencyClientStatus, 10, 330, 0xFFFFFF, true);
+        context.drawText(tr, "NEB Latency (Server)", 10, 350, 0xFFFFCC88, true);
+        context.drawText(tr, latencyServerStatus, 10, 360, 0xFFFFFF, true);
+
+        // Bandwidth charts — side by side
         int chartH = 120;
         int gap = 10;
         int chartW = (this.width - 30) / 2;
+        int chartY = 410;
 
-        context.drawText(tr, "Client", 10, chartY - 22, 0xFF88CCFF, true);
+        context.drawText(tr, "Client Bandwidth", 10, chartY - 22, 0xFF88CCFF, true);
         LineChart.render(context, tr, 10, chartY, chartW, chartH,
                 CLIENT_CHART_SERIES, CHART_COLORS, CLIENT_CHART_LABELS);
 
         int rightX = 10 + chartW + gap;
-        context.drawText(tr, "Server", rightX, chartY - 22, 0xFFFFCC88, true);
+        context.drawText(tr, "Server Bandwidth", rightX, chartY - 22, 0xFFFFCC88, true);
         LineChart.render(context, tr, rightX, chartY, chartW, chartH,
                 SERVER_CHART_SERIES, CHART_COLORS, SERVER_CHART_LABELS);
+
+        // Latency charts — second row (legend takes ~22px below chart)
+        int latencyChartY = chartY + chartH + 55;
+        context.drawText(tr, "Client Latency", 10, latencyChartY - 22, 0xFFFF8888, true);
+        LineChart.render(context, tr, 10, latencyChartY, chartW, chartH,
+                CLIENT_LATENCY_SERIES, LATENCY_COLORS, CLIENT_LATENCY_LABELS,
+                LineChart::formatMicros);
+
+        context.drawText(tr, "Server Latency", rightX, latencyChartY - 22, 0xFFFFCC88, true);
+        LineChart.render(context, tr, rightX, latencyChartY, chartW, chartH,
+                SERVER_LATENCY_SERIES, LATENCY_COLORS, SERVER_LATENCY_LABELS,
+                LineChart::formatMicros);
 
         context.getMatrices().pop();
 
@@ -229,6 +270,14 @@ public class StatScreen extends Screen {
             return String.format("%.2f §7MiB§r", bytes / (1024 * 1024d));
         } else {
             return String.format("%.2f §7GiB§r", bytes / (1024 * 1024 * 1024d));
+        }
+    }
+
+    private static String formatLatency(double ms) {
+        if (ms >= 1.0) {
+            return String.format("§e%.1f ms§r", ms);
+        } else {
+            return String.format("§a%.0f us§r", ms * 1000);
         }
     }
 }
