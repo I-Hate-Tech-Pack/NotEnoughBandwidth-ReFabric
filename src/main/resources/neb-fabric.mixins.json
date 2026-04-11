@@ -10,7 +10,8 @@
     "CustomPacketPayloadMixin",
     "ChunkMapMixin",
     "PlayerListMixin",
-    "ChunkDataSenderMixin"
+    "ChunkDataSenderMixin",
+    "TestServerMixin"
   ],
   "client": [
     "ClientChunkCacheMixin",

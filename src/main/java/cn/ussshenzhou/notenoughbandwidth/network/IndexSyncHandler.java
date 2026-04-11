@@ -4,6 +4,8 @@ import cn.ussshenzhou.notenoughbandwidth.NotEnoughBandwidthConfig;
 import cn.ussshenzhou.notenoughbandwidth.aggregation.AggregationManager;
 import cn.ussshenzhou.notenoughbandwidth.chunkcache.ChunkCacheManager;
 import cn.ussshenzhou.notenoughbandwidth.indextype.NamespaceIndexManager;
+import cn.ussshenzhou.notenoughbandwidth.zstd.ChunkDictionaryManager;
+import cn.ussshenzhou.notenoughbandwidth.zstd.ChunkZstdHelper;
 import cn.ussshenzhou.notenoughbandwidth.zstd.DictionaryManager;
 import cn.ussshenzhou.notenoughbandwidth.zstd.ZstdHelper;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
@@ -41,6 +43,7 @@ public class IndexSyncHandler {
 
     public static void registerServer() {
         PayloadTypeRegistry.playS2C().register(DictionarySyncPayload.TYPE, DictionarySyncPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(ChunkDictSyncPayload.TYPE, ChunkDictSyncPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(IndexSyncPayload.TYPE, IndexSyncPayload.CODEC);
 
         ServerPlayConnectionEvents.DISCONNECT.register((handler, server) -> {
@@ -50,9 +53,11 @@ public class IndexSyncHandler {
         });
 
         ServerPlayConnectionEvents.JOIN.register((handler, sender, server) -> {
-            // Send dictionary first so the client has it before compression starts.
+            // Send dictionaries first so the client has them before compression starts.
             byte[] dict = DictionaryManager.getDict();
             sender.sendPacket(new DictionarySyncPayload(dict));
+            byte[] chunkDict = ChunkDictionaryManager.getDict();
+            sender.sendPacket(new ChunkDictSyncPayload(chunkDict));
 
             List<Identifier> types = collectRegisteredTypes();
             // Only init once on dedicated server — registered types don't change after startup,
@@ -79,6 +84,17 @@ public class IndexSyncHandler {
                 LOGGER.info("Received dictionary from server ({} bytes)", payload.dictionary().length);
             } else {
                 LOGGER.info("Server has no trained dictionary yet");
+            }
+        });
+
+        ClientPlayNetworking.registerGlobalReceiver(ChunkDictSyncPayload.TYPE, (payload, context) -> {
+            ChunkDictionaryManager.setDict(payload.dictionary());
+            var conn = context.player().networkHandler.connection;
+            ChunkZstdHelper.evict(conn);
+            if (payload.dictionary() != null && payload.dictionary().length > 0) {
+                LOGGER.info("Received chunk dictionary from server ({} bytes)", payload.dictionary().length);
+            } else {
+                LOGGER.info("Server has no trained chunk dictionary yet");
             }
         });
 

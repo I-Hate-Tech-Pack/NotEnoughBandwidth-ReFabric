@@ -10,7 +10,8 @@
   "environment": "*",
   "entrypoints": {
     "main": ["cn.ussshenzhou.notenoughbandwidth.NotEnoughBandwidth"],
-    "client": ["cn.ussshenzhou.notenoughbandwidth.NotEnoughBandwidthClient"]
+    "client": ["cn.ussshenzhou.notenoughbandwidth.NotEnoughBandwidthClient"],
+    "fabric-gametest": ["cn.ussshenzhou.notenoughbandwidth.test.ChunkCompressionGameTest"]
   },
   "mixins": ["neb-fabric.mixins.json"],
   "accessWidener": "neb-fabric.accesswidener",

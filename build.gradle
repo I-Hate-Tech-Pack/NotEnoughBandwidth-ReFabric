@@ -16,6 +16,17 @@ repositories {
 
 loom {
     accessWidenerPath = file("src/main/resources/neb-fabric.accesswidener")
+
+    runs {
+        gametest {
+            server()
+            name "Game Test"
+            vmArg "-Dfabric-api.gametest"
+            vmArg "-Dfabric-api.gametest.report-file=${project.buildDir}/junit.xml"
+            vmArg "-Dneb.benchmark.noise=true"
+            runDir "build/gametest"
+        }
+    }
 }
 
 dependencies {
@@ -27,6 +38,10 @@ dependencies {
     include implementation("com.github.luben:zstd-jni:1.5.6-9")
     include implementation("org.iq80.leveldb:leveldb-api:0.12")
     include implementation("org.iq80.leveldb:leveldb:0.12")
+
+    testImplementation "org.junit.jupiter:junit-jupiter-api:5.10.2"
+    testImplementation "org.junit.jupiter:junit-jupiter-engine:5.10.2"
+    testRuntimeOnly "org.junit.platform:junit-platform-launcher:1.10.2"
 }
 
 processResources {
@@ -50,6 +65,13 @@ java {
     targetCompatibility = javaVersion
     toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
     withSourcesJar()
+}
+
+test {
+    useJUnitPlatform()
+    // MC bytecode needs Fabric Loader's class transforms to pass verification;
+    // in raw test env we skip verification since we only care about world gen + serialization.
+    jvmArgs '-noverify', '-XX:+IgnoreUnrecognizedVMOptions'
 }
 
 jar {

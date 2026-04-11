@@ -6,7 +6,9 @@ import cn.ussshenzhou.notenoughbandwidth.chunkcache.ChunkCacheManager;
 import cn.ussshenzhou.notenoughbandwidth.mixin.ClientPlayNetworkHandlerInvoker;
 import cn.ussshenzhou.notenoughbandwidth.stat.SimpleStatManager;
 import cn.ussshenzhou.notenoughbandwidth.stat.SystemTrafficMonitor;
+import cn.ussshenzhou.notenoughbandwidth.zstd.ChunkZstdHelper;
 import cn.ussshenzhou.notenoughbandwidth.zstd.DictionaryManager;
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
@@ -36,6 +38,7 @@ public class ModNetworking {
         PayloadTypeRegistry.playC2S().register(ChunkCacheManifestPayload.TYPE, ChunkCacheManifestPayload.CODEC);
         PayloadTypeRegistry.playC2S().register(ChunkRequestPayload.TYPE, ChunkRequestPayload.CODEC);
         PayloadTypeRegistry.playS2C().register(ChunkHashPayload.TYPE, ChunkHashPayload.CODEC);
+        PayloadTypeRegistry.playS2C().register(CompressedChunkPayload.TYPE, CompressedChunkPayload.CODEC);
 
         // Server-side handlers
         ServerPlayNetworking.registerGlobalReceiver(PacketAggregationPacket.TYPE, (payload, context) -> {
@@ -176,6 +179,68 @@ public class ModNetworking {
                 }
             });
             LOGGER.debug("Cache hit for chunk ({},{})", payload.chunkX(), payload.chunkZ());
+        });
+
+        // Dedicated-compressed chunk: decompress via chunk context and apply.
+        ClientPlayNetworking.registerGlobalReceiver(CompressedChunkPayload.TYPE, (payload, context) -> {
+            var connection = context.player().networkHandler.connection;
+            var registryManager = context.player().networkHandler.getRegistryManager();
+            int x = payload.chunkX();
+            int z = payload.chunkZ();
+
+            ByteBuf decompressed = ChunkZstdHelper.decompress(connection,
+                    Unpooled.wrappedBuffer(payload.compressedData()), payload.originalSize());
+            ChunkData chunkData;
+            LightData lightData;
+            try {
+                var buf = new RegistryByteBuf(decompressed, registryManager);
+                chunkData = new ChunkData(buf, x, z);
+                lightData = new LightData(buf, x, z);
+            } catch (Exception e) {
+                LOGGER.error("Failed to decompress/deserialize chunk ({},{})", x, z, e);
+                return;
+            } finally {
+                decompressed.release();
+            }
+
+            // Cache chunk for future PCC hits (same as vanilla onChunkData path).
+            if (ChunkCacheManager.isClientEnabled()) {
+                var inner = Unpooled.buffer(8192);
+                var cacheBuf = new RegistryByteBuf(inner, registryManager);
+                try {
+                    chunkData.write(cacheBuf);
+                    lightData.write(cacheBuf);
+                    byte[] bytes = new byte[cacheBuf.readableBytes()];
+                    cacheBuf.readBytes(bytes);
+                    var hashResult = cn.ussshenzhou.notenoughbandwidth.chunkcache.ChunkHashUtil.compute(
+                            chunkData, registryManager, "CLIENT", x, z);
+                    ChunkCacheManager.cacheChunk(hashResult.hash(), bytes);
+                } finally {
+                    inner.release();
+                }
+            }
+
+            var invoker = (ClientPlayNetworkHandlerInvoker) context.player().networkHandler;
+            context.client().execute(() -> {
+                try {
+                    invoker.nebLoadChunk(x, z, chunkData);
+                    var world = context.client().world;
+                    if (world != null) {
+                        world.enqueueChunkUpdate(() -> {
+                            invoker.nebReadLightData(x, z, lightData, false);
+                            var worldChunk = world.getChunkManager().getWorldChunk(x, z, false);
+                            if (worldChunk != null) {
+                                invoker.nebScheduleRenderChunk(worldChunk, x, z);
+                                context.client().worldRenderer.scheduleNeighborUpdates(worldChunk.getPos());
+                            }
+                        });
+                    }
+                } catch (Exception e) {
+                    LOGGER.error("Failed to apply decompressed chunk ({},{}) to world", x, z, e);
+                }
+            });
+            LOGGER.debug("Received compressed chunk ({},{}), ratio={}/{}", x, z,
+                    payload.compressedData().length, payload.originalSize());
         });
 
         ClientPlayNetworking.registerGlobalReceiver(StatRespondPayload.TYPE, (payload, context) -> {

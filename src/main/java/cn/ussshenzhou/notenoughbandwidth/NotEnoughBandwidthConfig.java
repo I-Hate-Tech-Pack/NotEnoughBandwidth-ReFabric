@@ -29,6 +29,8 @@ public class NotEnoughBandwidthConfig implements TConfig {
     public int dccTimeout = 60;
     public boolean chunkCacheEnabled = true;
     public int chunkCacheMaxSizeMB = 2048;
+    public int chunkCompressionLevel = 12;
+    public int chunkWindowLog = 24;
 
     @Expose(serialize = false, deserialize = false)
     public static final HashSet<String> COMMON_BLOCK_LIST = new HashSet<>() {{
@@ -40,6 +42,8 @@ public class NotEnoughBandwidthConfig implements TConfig {
         add(ChunkCacheManifestPayload.TYPE.id().toString());
         add(ChunkHashPayload.TYPE.id().toString());
         add(ChunkRequestPayload.TYPE.id().toString());
+        add(CompressedChunkPayload.TYPE.id().toString());
+        add(ChunkDictSyncPayload.TYPE.id().toString());
         add("minecraft:login");
         add("minecraft:chat_command");
         add("minecraft:chat_command_signed");
@@ -61,5 +65,13 @@ public class NotEnoughBandwidthConfig implements TConfig {
 
     public int getContextLevel() {
         return MathHelper.clamp(contextLevel, 21, 25);
+    }
+
+    public int getChunkCompressionLevel() {
+        return MathHelper.clamp(chunkCompressionLevel, 1, 22);
+    }
+
+    public int getChunkWindowLog() {
+        return MathHelper.clamp(chunkWindowLog, 21, 27);
     }
 }

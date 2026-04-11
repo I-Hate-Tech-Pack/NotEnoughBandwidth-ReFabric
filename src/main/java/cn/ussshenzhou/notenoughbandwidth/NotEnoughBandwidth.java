@@ -4,6 +4,7 @@ import cn.ussshenzhou.notenoughbandwidth.config.ConfigHelper;
 import cn.ussshenzhou.notenoughbandwidth.network.IndexSyncHandler;
 import cn.ussshenzhou.notenoughbandwidth.network.ModNetworking;
 import cn.ussshenzhou.notenoughbandwidth.stat.SystemTrafficMonitor;
+import cn.ussshenzhou.notenoughbandwidth.zstd.ChunkDictionaryManager;
 import cn.ussshenzhou.notenoughbandwidth.zstd.DictionaryManager;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
@@ -19,6 +20,7 @@ public class NotEnoughBandwidth implements ModInitializer {
         ConfigHelper.loadConfig(new NotEnoughBandwidthConfig());
         ensureServerUUID();
         DictionaryManager.loadFromDisk();
+        ChunkDictionaryManager.loadFromDisk();
         ModNetworking.registerCommon();
         IndexSyncHandler.registerServer();
         SystemTrafficMonitor.init();

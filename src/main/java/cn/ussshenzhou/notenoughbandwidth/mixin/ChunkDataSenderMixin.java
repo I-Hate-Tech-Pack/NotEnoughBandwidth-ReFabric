@@ -4,12 +4,19 @@ import cn.ussshenzhou.notenoughbandwidth.NotEnoughBandwidthConfig;
 import cn.ussshenzhou.notenoughbandwidth.chunkcache.ChunkCacheManager;
 import cn.ussshenzhou.notenoughbandwidth.chunkcache.ChunkHashUtil;
 import cn.ussshenzhou.notenoughbandwidth.network.ChunkHashPayload;
+import cn.ussshenzhou.notenoughbandwidth.network.CompressedChunkPayload;
 import cn.ussshenzhou.notenoughbandwidth.network.NebConnectionRegistry;
 import cn.ussshenzhou.notenoughbandwidth.stat.SimpleStatManager;
+import cn.ussshenzhou.notenoughbandwidth.zstd.ChunkDictionaryManager;
+import cn.ussshenzhou.notenoughbandwidth.zstd.ChunkZstdHelper;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import net.minecraft.network.ClientConnection;
+import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.packet.s2c.common.CustomPayloadS2CPacket;
 import net.minecraft.network.packet.s2c.play.ChunkDataS2CPacket;
 import net.minecraft.server.network.ChunkDataSender;
+import net.minecraft.server.network.DebugInfoSender;
 import net.minecraft.server.network.ServerPlayNetworkHandler;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.world.chunk.WorldChunk;
@@ -55,8 +62,38 @@ public class ChunkDataSenderMixin {
             SimpleStatManager.outRaw((int) Math.min(result.dataBytes(), Integer.MAX_VALUE));
         } else {
             SimpleStatManager.chunkCacheMisses.incrementAndGet();
-            handler.sendPacket(packet);
+
+            // Feed raw section bytes to chunk dictionary trainer.
+            var sBuf = packet.getChunkData().getSectionsDataBuf();
+            byte[] sectionBytes = new byte[sBuf.readableBytes()];
+            sBuf.getBytes(sBuf.readerIndex(), sectionBytes);
+            sBuf.release();
+            if (ChunkDictionaryManager.isSampling()) {
+                ChunkDictionaryManager.collectSample(sectionBytes);
+            }
+
+            // Serialize full ChunkData + LightData into a buffer for compression.
+            var tempBuf = new RegistryByteBuf(Unpooled.buffer(), world.getRegistryManager());
+            try {
+                packet.getChunkData().write(tempBuf);
+                packet.getLightData().write(tempBuf);
+                int originalSize = tempBuf.readableBytes();
+
+                ByteBuf compressed = ChunkZstdHelper.compress(connection, tempBuf);
+                try {
+                    byte[] compressedBytes = new byte[compressed.readableBytes()];
+                    compressed.readBytes(compressedBytes);
+                    handler.sendPacket(new CustomPayloadS2CPacket(
+                            new CompressedChunkPayload(chunk.getPos().x, chunk.getPos().z,
+                                    originalSize, compressedBytes)));
+                } finally {
+                    compressed.release();
+                }
+            } finally {
+                tempBuf.release();
+            }
         }
+        DebugInfoSender.sendChunkWatchingChange(world, chunk.getPos());
         ci.cancel();
     }
 }
