@@ -55,40 +55,51 @@ public class ChunkCompressionGameTest {
             }
 
             List<byte[]> flat = chunks.stream().map(ChunkData::allSections).toList();
+            int n = chunks.size();
             long totalRaw = flat.stream().mapToLong(c -> c.length).sum();
+
             long zlibTotal = 0;
             for (byte[] c : flat) zlibTotal += compressZlib(c, 6);
 
-            LOG.info("Raw: {} bytes ({} KB), avg {}/chunk", totalRaw, totalRaw / 1024, totalRaw / chunks.size());
-            LOG.info("Zlib lv6 baseline: {} bytes ({}% of raw)", zlibTotal, fmt(pct(zlibTotal, totalRaw)));
+            // Our implementation: dedicated Zstd streaming lv12, w=16MB
+            int OUR_LV = 12;
+            long ourTotal = compressZstdStreaming(flat, OUR_LV, 24);
 
-            // Current approach: full sections blob through streaming context
             LOG.info("");
-            LOG.info("=== Structural Optimization Comparison (all lv19, w=16MB) ===");
-            int LV = 19;
+            LOG.info("=== Compression Results ({} chunks, {}x{} grid) ===", n, GRID, GRID);
+            LOG.info("  Raw (uncompressed):              {} bytes  ({} KB)  avg {}/chunk",
+                    totalRaw, totalRaw / 1024, totalRaw / n);
+            LOG.info("  Vanilla zlib (lv6, per-chunk):   {} bytes  ({}% of raw)  avg {}/chunk",
+                    zlibTotal, fmt(pct(zlibTotal, totalRaw)), zlibTotal / n);
+            LOG.info("  NEB dedicated Zstd (lv{}, stream): {} bytes  ({}% of raw)  avg {}/chunk  {}% vs zlib",
+                    OUR_LV, ourTotal, fmt(pct(ourTotal, totalRaw)), ourTotal / n,
+                    fmt(saving(ourTotal, zlibTotal)));
+            LOG.info("");
+            LOG.info("  Per-chunk savings vs zlib: {} bytes/chunk",
+                    (zlibTotal - ourTotal) / n);
+            LOG.info("  Total bandwidth saved: {} bytes ({}%)",
+                    zlibTotal - ourTotal, fmt(saving(ourTotal, zlibTotal)));
 
-            long current = compressZstdStreaming(flat, LV, 24);
-            logOpt("A) Current: full sections stream", current, totalRaw, zlibTotal);
-
-            // B) Sections-only: skip empty (air) sections, mark with bitmask
-            long sectionsOnly = benchmarkSectionsOnly(chunks, LV);
-            logOpt("B) Skip air sections (bitmask)", sectionsOnly, totalRaw, zlibTotal);
-
-            // C) Y-level grouped: reorder sections across chunks by Y level
-            long yGrouped = benchmarkYGrouped(chunks, LV);
-            logOpt("C) Y-level grouped stream", yGrouped, totalRaw, zlibTotal);
-
-            // D) Delta encoding: XOR each section with prev chunk's same section
-            long delta = benchmarkDelta(chunks, LV);
-            logOpt("D) Delta (XOR prev chunk) + stream", delta, totalRaw, zlibTotal);
-
-            // E) Combined: Y-grouped + delta
-            long yDelta = benchmarkYGroupedDelta(chunks, LV);
-            logOpt("E) Y-grouped + delta", yDelta, totalRaw, zlibTotal);
-
-            // F) Per-Y-level separate contexts (one context per Y level)
-            long perY = benchmarkPerYContext(chunks, LV);
-            logOpt("F) Separate context per Y-level", perY, totalRaw, zlibTotal);
+            // Progressive detail: show all three per chunk
+            LOG.info("");
+            LOG.info("=== Progressive Detail ===");
+            var compCtx = createCtx(OUR_LV);
+            long cumRaw = 0, cumZlib = 0, cumOur = 0;
+            for (int i = 0; i < flat.size(); i++) {
+                byte[] data = flat.get(i);
+                int raw = data.length;
+                int zlib = compressZlib(data, 6);
+                int our = (int) compressOne(compCtx, data);
+                cumRaw += raw; cumZlib += zlib; cumOur += our;
+                if (i < 5 || i % 20 == 0 || i == flat.size() - 1) {
+                    LOG.info("  #{}: raw={}  zlib={}  ours={}  vs_zlib={}%",
+                            i + 1, raw, zlib, our, fmt(saving(our, zlib)));
+                }
+            }
+            compCtx.close();
+            LOG.info("  Cumulative: raw={}  zlib={} ({}%)  ours={} ({}%)  saved={}% vs zlib",
+                    cumRaw, cumZlib, fmt(pct(cumZlib, cumRaw)),
+                    cumOur, fmt(pct(cumOur, cumRaw)), fmt(saving(cumOur, cumZlib)));
 
             ctx.complete();
         } catch (Exception e) {
