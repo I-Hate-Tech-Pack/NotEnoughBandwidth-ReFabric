@@ -90,7 +90,7 @@ public class ModNetworking {
         ServerPlayNetworking.registerGlobalReceiver(StatQueryPayload.TYPE, (payload, context) -> {
             ServerPlayerEntity player = context.player();
             // permission >= 2 即管理员 使用谓词
-            if (((LeveledPermissionPredicate)player.getPermissions()).getLevel().getLevel() >= 2) {
+            if (context.server().getPermissionLevel(player.getPlayerConfigEntry()).getLevel().getLevel() >= 2) {
                 ServerPlayNetworking.send(player, new StatRespondPayload(
                         LOCAL.inboundBytesBaked().get(),
                         LOCAL.inboundBytesRaw().get(),
