@@ -94,11 +94,17 @@ public class AggregatedDecodePacket {
         // Build a fresh snapshot — no mutation of shared state.
         var fresh = new Object2IntArrayMap<Identifier>();
         fresh.defaultReturnValue(-1);
-        vanillaCodec.typeToIndex.forEach((t, i) -> {
-            if (t instanceof PacketType<?> pt) {
-                fresh.put(pt.id(), (int) i);
+        var map = vanillaCodec.typeToIndex;
+        map.keySet().forEach(key -> {
+            if (key instanceof PacketType<?> pt) {
+                fresh.put(pt.id(), (int) map.getInt(key));
             }
-        });
+        });;
+        // vanillaCodec.typeToIndex.forEach((t, i) -> {
+        //     if (t instanceof PacketType<?> pt) {
+        //         fresh.put(pt.id(), (int) i);
+        //     }
+        // });
         VANILLA_TO_ID = fresh;
         LAST_KNOWN_SIZE.set(currentSize);
         return fresh;

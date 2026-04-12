@@ -11,6 +11,9 @@ import io.netty.buffer.Unpooled;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.command.permission.LeveledPermissionPredicate;
+import net.minecraft.command.permission.Permission;
+import net.minecraft.command.permission.PermissionLevel;
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.packet.s2c.play.ChunkData;
 import net.minecraft.network.packet.s2c.play.ChunkDataS2CPacket;
@@ -26,6 +29,7 @@ import static cn.ussshenzhou.notenoughbandwidth.stat.SimpleStatManager.LOCAL;
 public class ModNetworking {
     private static final Logger LOGGER = LoggerFactory.getLogger("NEB-Network");
 
+    @SuppressWarnings("null")
     public static void registerCommon() {
         // Register payload types
         PayloadTypeRegistry.playS2C().register(PacketAggregationPacket.TYPE, PacketAggregationPacket.CODEC);
@@ -81,10 +85,12 @@ public class ModNetworking {
                 }
             });
         });
+        
 
         ServerPlayNetworking.registerGlobalReceiver(StatQueryPayload.TYPE, (payload, context) -> {
             ServerPlayerEntity player = context.player();
-            if (player.hasPermissionLevel(2)) {
+            // permission >= 2 即管理员 使用谓词
+            if (((LeveledPermissionPredicate)player.getPermissions()).getLevel().getLevel() >= 2) {
                 ServerPlayNetworking.send(player, new StatRespondPayload(
                         LOCAL.inboundBytesBaked().get(),
                         LOCAL.inboundBytesRaw().get(),
@@ -107,6 +113,7 @@ public class ModNetworking {
         });
     }
 
+    @SuppressWarnings("null")
     public static void registerClient() {
         ClientPlayNetworking.registerGlobalReceiver(PacketAggregationPacket.TYPE, (payload, context) -> {
             payload.handle(context.player().networkHandler.connection);
