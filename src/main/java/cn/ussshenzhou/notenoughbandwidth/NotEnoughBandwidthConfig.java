@@ -8,7 +8,6 @@ import com.google.gson.annotations.Expose;
 import net.minecraft.util.math.MathHelper;
 
 import java.util.HashSet;
-import java.util.UUID;
 
 public class NotEnoughBandwidthConfig implements TConfig {
 

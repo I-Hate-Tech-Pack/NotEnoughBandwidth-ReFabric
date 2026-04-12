@@ -36,12 +36,10 @@ public final class ChunkHashUtil {
 
     public record Result(long hash, int dataBytes) {}
 
-    @SuppressWarnings("deprecation")
     public static Result compute(ChunkData chunkData, DynamicRegistryManager registryManager) {
         return compute(chunkData, registryManager, "?", 0, 0);
     }
 
-    @SuppressWarnings("deprecation")
     public static Result compute(ChunkData chunkData, DynamicRegistryManager registryManager,
                                  String side, int chunkX, int chunkZ) {
         var hasher = Hashing.murmur3_128().newHasher();

@@ -100,7 +100,7 @@ public class ChunkCacheDatabase implements AutoCloseable {
         }
         byte[] compressed = new byte[value.length - TIMESTAMP_BYTES];
         System.arraycopy(value, TIMESTAMP_BYTES, compressed, 0, compressed.length);
-        long originalSize = Zstd.decompressedSize(compressed);
+        long originalSize = Zstd.getFrameContentSize(compressed);
         if (originalSize < 0 || originalSize > 64 * 1024 * 1024) {
             LOGGER.warn("Invalid decompressed size {} for hash {}, dropping entry", originalSize, hash);
             db.delete(longToBytes(hash));
