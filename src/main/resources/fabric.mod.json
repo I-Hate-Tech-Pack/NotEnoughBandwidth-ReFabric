@@ -13,7 +13,7 @@
     "client": ["cn.ussshenzhou.notenoughbandwidth.NotEnoughBandwidthClient"],
     "fabric-gametest": ["cn.ussshenzhou.notenoughbandwidth.test.ChunkCompressionGameTest"]
   },
-  "mixins": ["neb-fabric.mixins.json"],
+  "mixins": ["neb-fabric.mixins.json","extra.mixins.json"],
   "accessWidener": "neb-fabric.accesswidener",
   "depends": {
     "fabricloader": ">=0.18.0",
