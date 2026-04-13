@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "cn.howxu.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "BrandMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
