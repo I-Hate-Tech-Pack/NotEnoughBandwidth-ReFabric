@@ -1,0 +1,44 @@
+name: Gradle Build and Check
+
+# 触发条件：当有代码 push 到仓库，或者有 pull request 时自动执行
+on:
+  push:
+    branches: [ "main", "master" ] # 如果你的主分支叫其他名字，请在这里修改
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest # 使用最新的 Ubuntu 环境运行
+
+    steps:
+    # 1. 拉取仓库代码
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # 2. 设置 Java 环境 (请根据你的项目实际需求修改 java-version)
+    - name: Set up JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21' # 常用版本为 8, 11, 17, 或 21
+        distribution: 'temurin'
+
+    # 3. 配置并缓存 Gradle，这会加快后续构建速度
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    # 4. 赋予 gradlew 执行权限 (防止 Windows/Linux 跨平台换行符或权限丢失导致报错)
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    # 5. 执行 gradle check 和 build
+    - name: Run Gradle check and build
+      run: ./gradlew check build
+
+    # 6. 将 build/libs 目录下的产物上传到 Action 结果中
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: compiled-libs # 最终生成的压缩包名称，你可以随意更改
+        path: build/libs/
+        if-no-files-found: error # 如果没有生成文件则报错，方便排查问题
