@@ -3,9 +3,9 @@ name: Gradle Build and Check
 # 触发条件：当有代码 push 到仓库，或者有 pull request 时自动执行
 on:
   push:
-    branches: [ "main", "master" ] # 如果你的主分支叫其他名字，请在这里修改
+    branches: [ "1.21.10" ] # 如果你的主分支叫其他名字，请在这里修改
   pull_request:
-    branches: [ "main", "master" ]
+    branches: [ "1.21.10" ]
 
 jobs:
   build:
