@@ -16,7 +16,11 @@
   "accessWidener": "neb-fabric.accesswidener",
   "depends": {
     "fabricloader": ">=0.18.0",
+<<<<<<< HEAD
     "minecraft": "~1.21.11",
+=======
+    "minecraft": ">=1.21 <1.22",
+>>>>>>> 535693b97cf00149cce4f8b4a70e5eb80b6c72e0
     "java": ">=21",
     "fabric-api": "*"
   }

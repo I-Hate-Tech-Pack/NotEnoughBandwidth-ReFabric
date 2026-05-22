@@ -1,5 +1,6 @@
 package cn.ussshenzhou.notenoughbandwidth.network;
 
+import cn.ussshenzhou.notenoughbandwidth.NotEnoughBandwidthConfig;
 import cn.ussshenzhou.notenoughbandwidth.aggregation.AggregationManager;
 import cn.ussshenzhou.notenoughbandwidth.aggregation.PacketAggregationPacket;
 import cn.ussshenzhou.notenoughbandwidth.chunkcache.ChunkCacheManager;
@@ -11,9 +12,13 @@ import io.netty.buffer.Unpooled;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+<<<<<<< HEAD
 import net.minecraft.command.permission.LeveledPermissionPredicate;
 import net.minecraft.command.permission.Permission;
 import net.minecraft.command.permission.PermissionLevel;
+=======
+import net.minecraft.command.DefaultPermissions;
+>>>>>>> 535693b97cf00149cce4f8b4a70e5eb80b6c72e0
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.packet.s2c.play.ChunkData;
 import net.minecraft.network.packet.s2c.play.ChunkDataS2CPacket;
@@ -23,6 +28,8 @@ import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.math.ChunkPos;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.BitSet;
 
 import static cn.ussshenzhou.notenoughbandwidth.stat.SimpleStatManager.LOCAL;
 
@@ -73,8 +80,9 @@ public class ModNetworking {
             world.getServer().execute(() -> {
                 var chunk = world.getChunkManager().getWorldChunk(pos.x, pos.z);
                 if (chunk != null) {
+                    BitSet lightMask = NotEnoughBandwidthConfig.get().lightStripEnabled ? new BitSet() : null;
                     player.networkHandler.sendPacket(
-                            new ChunkDataS2CPacket(chunk, world.getLightingProvider(), null, null));
+                            new ChunkDataS2CPacket(chunk, world.getLightingProvider(), lightMask, lightMask));
                     LOGGER.debug("Resent chunk ({},{}) after cache miss for {}",
                             pos.x, pos.z, player.getName().getString());
                 } else {
@@ -89,8 +97,12 @@ public class ModNetworking {
 
         ServerPlayNetworking.registerGlobalReceiver(StatQueryPayload.TYPE, (payload, context) -> {
             ServerPlayerEntity player = context.player();
+<<<<<<< HEAD
             // permission >= 2 即管理员 使用谓词
             if (context.server().getPermissionLevel(player.getPlayerConfigEntry()).getLevel().getLevel() >= 2) {
+=======
+            if (player.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS)) {
+>>>>>>> 535693b97cf00149cce4f8b4a70e5eb80b6c72e0
                 ServerPlayNetworking.send(player, new StatRespondPayload(
                         LOCAL.inboundBytesBaked().get(),
                         LOCAL.inboundBytesRaw().get(),
