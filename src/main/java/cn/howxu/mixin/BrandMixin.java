@@ -32,7 +32,7 @@ public abstract class BrandMixin extends Screen {
     @Inject(method = "render", at = @At("TAIL"), locals = LocalCapture.CAPTURE_FAILSOFT)
     private void onRender(DrawContext context, int mouseX, int mouseY, float deltaTicks, CallbackInfo ci, float f) {
         int alpha = MathHelper.ceil(f * 255.0F);
-        String brand_info = "Performance enhanced for " + SharedConstants.getGameVersion().name() + " by howxu";
-        context.drawTextWithShadow(this.textRenderer, brand_info, 2, this.height - 20, ColorHelper.getArgb(alpha,0,255,0));
+        String brand_info = "准备好和青色的椒决一死战了吗";
+        context.drawTextWithShadow(this.textRenderer, brand_info, 2, this.height - 20, ColorHelper.getArgb(alpha,255,209,128));
     }
 }
