@@ -12,13 +12,7 @@ import io.netty.buffer.Unpooled;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
-<<<<<<< HEAD
-import net.minecraft.command.permission.LeveledPermissionPredicate;
-import net.minecraft.command.permission.Permission;
-import net.minecraft.command.permission.PermissionLevel;
-=======
 import net.minecraft.command.DefaultPermissions;
->>>>>>> 535693b97cf00149cce4f8b4a70e5eb80b6c72e0
 import net.minecraft.network.RegistryByteBuf;
 import net.minecraft.network.packet.s2c.play.ChunkData;
 import net.minecraft.network.packet.s2c.play.ChunkDataS2CPacket;
@@ -97,12 +91,7 @@ public class ModNetworking {
 
         ServerPlayNetworking.registerGlobalReceiver(StatQueryPayload.TYPE, (payload, context) -> {
             ServerPlayerEntity player = context.player();
-<<<<<<< HEAD
-            // permission >= 2 即管理员 使用谓词
-            if (context.server().getPermissionLevel(player.getPlayerConfigEntry()).getLevel().getLevel() >= 2) {
-=======
             if (player.getPermissions().hasPermission(DefaultPermissions.GAMEMASTERS)) {
->>>>>>> 535693b97cf00149cce4f8b4a70e5eb80b6c72e0
                 ServerPlayNetworking.send(player, new StatRespondPayload(
                         LOCAL.inboundBytesBaked().get(),
                         LOCAL.inboundBytesRaw().get(),
